@@ -54,16 +54,14 @@ jobs:
           sam build --use-container
           
           # Delete stack if stuck in REVIEW_IN_PROGRESS
-          aws cloudformation delete-stack --stack-name ${{ matrix.environment }}-${{ matrix.app }} || true
-          aws cloudformation wait stack-delete-complete --stack-name ${{ matrix.environment }}-${{ matrix.app }} || true
+          aws cloudformation delete-stack --stack-name ${{ matrix.app }}-${{ matrix.environment }} || true
+          aws cloudformation wait stack-delete-complete --stack-name ${{ matrix.app }}-${{ matrix.environment }} || true
           
           sam deploy --no-confirm-changeset --no-fail-on-empty-changeset \
-            --stack-name ${{ matrix.environment }}-${{ matrix.app }} \
+            --stack-name ${{ matrix.app }}-${{ matrix.environment }} \
             --capabilities CAPABILITY_IAM \
             --region ap-southeast-1 \
-            --parameter-overrides \
-              Environment=${{ matrix.environment }} \
-              FunctionName=${{ matrix.app }}-${{ matrix.environment }} \
+            --parameter-overrides Environment=${{ matrix.environment }} \
             --tags Application=${{ matrix.app }} Environment=${{ matrix.environment }} \
             --force-upload \
             --resolve-s3
@@ -129,16 +127,14 @@ jobs:
           # Only deploy if manually triggered
           if [[ ${{ github.event_name }} == 'workflow_dispatch' && ${{ github.event.inputs.deploy_to_live }} == 'true' ]]; then
             # Delete stack if stuck in REVIEW_IN_PROGRESS
-            aws cloudformation delete-stack --stack-name ${{ matrix.environment }}-${{ matrix.app }} || true
-            aws cloudformation wait stack-delete-complete --stack-name ${{ matrix.environment }}-${{ matrix.app }} || true
+            aws cloudformation delete-stack --stack-name ${{ matrix.app }}-${{ matrix.environment }} || true
+            aws cloudformation wait stack-delete-complete --stack-name ${{ matrix.app }}-${{ matrix.environment }} || true
             
             sam deploy --no-confirm-changeset --no-fail-on-empty-changeset \
-              --stack-name ${{ matrix.environment }}-${{ matrix.app }} \
+              --stack-name ${{ matrix.app }}-${{ matrix.environment }} \
               --capabilities CAPABILITY_IAM \
               --region ap-southeast-1 \
-              --parameter-overrides \
-                Environment=${{ matrix.environment }} \
-                FunctionName=${{ matrix.app }}-${{ matrix.environment }} \
+              --parameter-overrides Environment=${{ matrix.environment }} \
               --tags Application=${{ matrix.app }} Environment=${{ matrix.environment }} \
               --force-upload \
               --resolve-s3
