@@ -7,7 +7,7 @@ jobs:
   wait-for-approval:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    environment: 
+    environment: prod
     steps:
       - name: Approve deployment
         run: echo "Deployment approved"
