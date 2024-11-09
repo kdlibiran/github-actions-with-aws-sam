@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: SAM template for Lambda function deployment
+
+Globals:
+  Function:
+    Timeout: 3
+
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment name
+  Application:
+    Type: String
+    Description: Application name
+
+Resources:
+  Function:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Environment}-${Application}"
+      CodeUri: function/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      Architectures:
+        - x86_64
+
+Outputs:
+  Function:
+    Description: "Lambda Function ARN"
+    Value: !GetAtt Function.Arn
