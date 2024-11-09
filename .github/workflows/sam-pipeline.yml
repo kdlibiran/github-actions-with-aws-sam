@@ -6,12 +6,10 @@ on:
 jobs:
   wait-for-approval:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    environment: prod
+    environment: ${{ (github.ref == 'refs/heads/main' && 'prod') || (github.ref == 'refs/heads/development' && 'dev') }}
     steps:
       - name: Approve deployment
         run: echo "Deployment approved"
-
   build-deploy:
     # Add needs condition only for main branch
     needs: [wait-for-approval]
