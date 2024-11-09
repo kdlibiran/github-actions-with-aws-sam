@@ -1,9 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: >
-  Template for !Sub ${Environment}-${Application}
+Description: SAM template for Lambda function deployment
 
-# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
     Timeout: 3
@@ -15,11 +13,10 @@ Parameters:
   Application:
     Type: String
     Description: Application name
-    Default: function1
 
 Resources:
   Function:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${Environment}-${Application}"
       CodeUri: function/
