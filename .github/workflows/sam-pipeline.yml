@@ -53,7 +53,6 @@ jobs:
         if: steps.previous-hash.outputs.prev_hash != steps.sam-hash.outputs.sam_hash
         working-directory: ./${{ matrix.app }}
         run: |
-          # Build only if changes detected
           sam build --use-container
           
           # Delete stack if stuck in REVIEW_IN_PROGRESS
