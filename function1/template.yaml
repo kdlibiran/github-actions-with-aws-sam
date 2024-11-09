@@ -36,7 +36,11 @@ Resources:
 Outputs:
   !Sub ${Environment}-${Application}Function:
     Description: "!Sub ${Environment}-${Application} Lambda Function ARN"
-    Value: !GetAtt !Sub ${Environment}-${Application}Function.Arn
+    Value: !GetAtt 
+      - !Sub ${Environment}-${Application}Function
+      - Arn
   !Sub ${Environment}-${Application}IamRole:
     Description: "Implicit IAM Role created for !Sub ${Environment}-${Application}"
-    Value: !GetAtt !Sub ${Environment}-${Application}Function.Arn
+    Value: !GetAtt 
+      - !Sub ${Environment}-${Application}Function
+      - Arn
