@@ -3,7 +3,7 @@
 version = 0.1
 
 [default.global.parameters]
-stack_name = "new-app"
+stack_name = "${Environment}-${Application}"
 
 [default.build.parameters]
 cached = true
