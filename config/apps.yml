@@ -1,0 +1,3 @@
+apps:
+  - name: github-actions-with-aws-sam
+  - name: new-app
