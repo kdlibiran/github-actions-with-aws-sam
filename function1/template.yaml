@@ -17,18 +17,17 @@ Parameters:
     Description: Application name
 
 Resources:
-  !Sub ${Environment}-${Application}Function:
+  Function:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       FunctionName: !Sub "${Environment}-${Application}"
-      CodeUri: ${Application}/
+      CodeUri: function/
       Handler: app.lambda_handler
       Runtime: python3.8
       Architectures:
         - x86_64
 
 Outputs:
-  !Sub ${Environment}-${Application}Function:
+  Function:
     Description: !Sub "${Environment}-${Application} Lambda Function ARN"
-    Value: !GetAtt 
-      - !Sub "${Environment}-${Application}Function.Arn"
+    Value: !GetAtt Function.Arn
