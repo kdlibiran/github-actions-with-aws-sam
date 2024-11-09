@@ -12,12 +12,12 @@ on:
         default: false
 
 jobs:
-  build-deploy-staging:
+  build-deploy-dev:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         app: ['github-actions-with-aws-sam', 'new-app']
-        environment: ['staging']  
+        environment: ['dev']  
     if: github.ref == 'refs/heads/development'
     steps:
       - uses: actions/checkout@v2
@@ -61,9 +61,7 @@ jobs:
             --stack-name ${{ matrix.app }}-${{ matrix.environment }} \
             --capabilities CAPABILITY_IAM \
             --region ap-southeast-1 \
-            --parameter-overrides \
-              Environment=${{ matrix.environment }} \
-              Application=${{ matrix.app }} \
+            --parameter-overrides Environment=${{ matrix.environment }} \
             --tags Application=${{ matrix.app }} Environment=${{ matrix.environment }} \
             --force-upload \
             --resolve-s3
@@ -136,9 +134,7 @@ jobs:
               --stack-name ${{ matrix.app }}-${{ matrix.environment }} \
               --capabilities CAPABILITY_IAM \
               --region ap-southeast-1 \
-              --parameter-overrides \
-                Environment=${{ matrix.environment }} \
-                Application=${{ matrix.app }} \
+              --parameter-overrides Environment=${{ matrix.environment }} \
               --tags Application=${{ matrix.app }} Environment=${{ matrix.environment }} \
               --force-upload \
               --resolve-s3
