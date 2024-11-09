@@ -65,11 +65,7 @@ jobs:
         working-directory: ./${{ matrix.app }}
         run: |
           sam build --use-container
-          
-          # Delete stack if stuck in REVIEW_IN_PROGRESS
-          aws cloudformation delete-stack --stack-name ${{ matrix.app }}-${{ matrix.environment }} || true
-          aws cloudformation wait stack-delete-complete --stack-name ${{ matrix.app }}-${{ matrix.environment }} || true
-          
+                    
           sam deploy --debug --no-confirm-changeset --no-fail-on-empty-changeset \
             --stack-name ${{ matrix.app }}-${{ matrix.environment }} \
             --capabilities CAPABILITY_IAM \
