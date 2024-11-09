@@ -1,32 +1,27 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  github-actions-with-aws-sam
-
-  Sample SAM Template for github-actions-with-aws-sam
+  Template for !Sub ${Environment}-${Application}
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
     Timeout: 3
-    MemorySize: 128
 
 Parameters:
   Environment:
     Type: String
     Description: Environment name
-    Default: dev
   Application:
     Type: String
     Description: Application name
-    Default: github-actions-with-aws-sam
 
 Resources:
-  HelloWorldFunction:
+  !Sub ${Environment}-${Application}Function:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       FunctionName: !Sub "${Environment}-${Application}"
-      CodeUri: hello_world/
+      CodeUri: ${Application}/
       Handler: app.lambda_handler
       Runtime: python3.8
       Architectures:
@@ -39,15 +34,9 @@ Resources:
             Method: get
 
 Outputs:
-  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
-  # Find out more about other implicit resources you can reference within SAM
-  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  HelloWorldApi:
-    Description: "API Gateway endpoint URL for Prod stage for Hello World function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
-  HelloWorldFunction:
-    Description: "Hello World Lambda Function ARN"
-    Value: !GetAtt HelloWorldFunction.Arn
-  HelloWorldFunctionIamRole:
-    Description: "Implicit IAM Role created for Hello World function"
-    Value: !GetAtt HelloWorldFunctionRole.Arn
+  !Sub ${Environment}-${Application}Function:
+    Description: "!Sub ${Environment}-${Application} Lambda Function ARN"
+    Value: !GetAtt !Sub ${Environment}-${Application}Function.Arn
+  !Sub ${Environment}-${Application}IamRole:
+    Description: "Implicit IAM Role created for !Sub ${Environment}-${Application}"
+    Value: !GetAtt !Sub ${Environment}-${Application}Function.Arn
