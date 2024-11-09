@@ -3,6 +3,14 @@ on:
     branches:
       - main
       - development
+  workflow_dispatch:
+    inputs:
+      deploy_to_live:
+        description: 'Deploy to live environment'
+        type: boolean
+        required: true
+        default: false
+
 jobs:
   build-deploy-staging:
     runs-on: ubuntu-latest
@@ -110,28 +118,31 @@ jobs:
 
       # sam build and deploy (only if hash changed)
       - name: Build and Deploy SAM application
-        if: steps.previous-hash.outputs.prev_hash != steps.sam-hash.outputs.sam_hash
+        if: steps.previous-hash.outputs.prev_hash != steps.sam-hash.outputs.sam_hash && (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_to_live == 'true')
         working-directory: ./${{ matrix.app }}
         run: |
           # Build only if changes detected
           sam build --use-container
           
-          # Delete stack if stuck in REVIEW_IN_PROGRESS
-          aws cloudformation delete-stack --stack-name ${{ matrix.app }}-${{ matrix.environment }} || true
-          aws cloudformation wait stack-delete-complete --stack-name ${{ matrix.app }}-${{ matrix.environment }} || true
-          
-          sam deploy --no-confirm-changeset --no-fail-on-empty-changeset \
-            --stack-name ${{ matrix.app }}-${{ matrix.environment }} \
-            --capabilities CAPABILITY_IAM \
-            --region ap-southeast-1 \
-            --parameter-overrides Environment=${{ matrix.environment }} \
-            --tags Application=${{ matrix.app }} Environment=${{ matrix.environment }} \
-            --force-upload \
-            --resolve-s3
+          # Only deploy if manually triggered
+          if [[ ${{ github.event_name }} == 'workflow_dispatch' && ${{ github.event.inputs.deploy_to_live }} == 'true' ]]; then
+            # Delete stack if stuck in REVIEW_IN_PROGRESS
+            aws cloudformation delete-stack --stack-name ${{ matrix.app }}-${{ matrix.environment }} || true
+            aws cloudformation wait stack-delete-complete --stack-name ${{ matrix.app }}-${{ matrix.environment }} || true
+            
+            sam deploy --no-confirm-changeset --no-fail-on-empty-changeset \
+              --stack-name ${{ matrix.app }}-${{ matrix.environment }} \
+              --capabilities CAPABILITY_IAM \
+              --region ap-southeast-1 \
+              --parameter-overrides Environment=${{ matrix.environment }} \
+              --tags Application=${{ matrix.app }} Environment=${{ matrix.environment }} \
+              --force-upload \
+              --resolve-s3
+          fi
 
       # Store new hash in SSM Parameter Store
       - name: Store new hash
-        if: steps.previous-hash.outputs.prev_hash != steps.sam-hash.outputs.sam_hash
+        if: steps.previous-hash.outputs.prev_hash != steps.sam-hash.outputs.sam_hash && (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_to_live == 'true')
         run: |
           aws ssm put-parameter \
             --name "/${{ matrix.app }}/${{ matrix.environment }}/deployment-hash" \
