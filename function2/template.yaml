@@ -39,8 +39,3 @@ Outputs:
     Value: !GetAtt 
       - !Sub ${Environment}-${Application}Function
       - Arn
-  !Sub ${Environment}-${Application}IamRole:
-    Description: "Implicit IAM Role created for !Sub ${Environment}-${Application}"
-    Value: !GetAtt 
-      - !Sub ${Environment}-${Application}Function
-      - Arn
