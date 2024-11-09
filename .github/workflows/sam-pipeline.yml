@@ -10,17 +10,30 @@ jobs:
     steps:
       - name: Approve deployment
         run: echo "Deployment approved"
+  get-apps:
+    runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.read_apps.outputs.apps }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Read apps config
+        id: read_apps
+        run: |
+          # Extract just the array part from the YAML
+          echo "apps=$(yq eval '.apps[]' config/apps.yml | jq -R -s -c 'split("\n")[:-1]')" >> $GITHUB_OUTPUT
   build-deploy:
-    # Add needs condition only for main branch
-    needs: [wait-for-approval]
+    needs: [wait-for-approval, get-apps]
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development'
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        app: ['function1', 'function2']
+        app: ${{ fromJson(needs.get-apps.outputs.apps) }}
         environment:
           - ${{ (github.ref == 'refs/heads/main' && 'prod') || (github.ref == 'refs/heads/development' && 'dev') }}
     steps:
+      - name: Read apps config
+        id: read_apps
+        run: echo "apps=$(cat config/apps.yml)" >> $GITHUB_OUTPUT
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
       - uses: aws-actions/setup-sam@v1
