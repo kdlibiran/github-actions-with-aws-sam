@@ -15,6 +15,7 @@ Parameters:
   Application:
     Type: String
     Description: Application name
+    Default: function1
 
 Resources:
   Function:
