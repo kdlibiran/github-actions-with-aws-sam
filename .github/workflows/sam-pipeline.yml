@@ -2,12 +2,23 @@ on:
   push:
     branches:
       - main
+      - development
+  workflow_dispatch:
+    inputs:
+      deploy_to_live:
+        description: 'Deploy to live environment'
+        type: boolean
+        required: true
+        default: false
+
 jobs:
-  build-deploy:
+  build-deploy-dev:
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         app: ['github-actions-with-aws-sam', 'new-app']
-    runs-on: ubuntu-latest
+        environment: ['dev']  
+    if: github.ref == 'refs/heads/development'
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -17,11 +28,6 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-southeast-1
-
-      # sam build 
-      - name: SAM build
-        working-directory: ./${{ matrix.app }}
-        run: sam build --use-container
 
       # Calculate hash of SAM application files
       - name: Calculate SAM app hash
@@ -36,25 +42,36 @@ jobs:
         id: previous-hash
         continue-on-error: true
         run: |
-          PREV_HASH=$(aws ssm get-parameter --name "/${{ matrix.app }}/deployment-hash" --query "Parameter.Value" --output text || echo "none")
+          PREV_HASH=$(aws ssm get-parameter --name "/${{ matrix.app }}/${{ matrix.environment }}/deployment-hash" --query "Parameter.Value" --output text || echo "none")
           echo "prev_hash=$PREV_HASH" >> $GITHUB_OUTPUT
 
-      # sam deploy (only if hash changed)
-      - name: Deploy SAM application
+      # sam build and deploy (only if hash changed)
+      - name: Build and Deploy SAM application
         if: steps.previous-hash.outputs.prev_hash != steps.sam-hash.outputs.sam_hash
         working-directory: ./${{ matrix.app }}
         run: |
+          # Build only if changes detected
+          sam build --use-container
+          
+          # Delete stack if stuck in REVIEW_IN_PROGRESS
+          aws cloudformation delete-stack --stack-name ${{ matrix.app }}-${{ matrix.environment }} || true
+          aws cloudformation wait stack-delete-complete --stack-name ${{ matrix.app }}-${{ matrix.environment }} || true
+          
           sam deploy --no-confirm-changeset --no-fail-on-empty-changeset \
-            --stack-name ${{ matrix.app }} \
+            --stack-name ${{ matrix.app }}-${{ matrix.environment }} \
             --capabilities CAPABILITY_IAM \
-            --region ap-southeast-1
+            --region ap-southeast-1 \
+            --parameter-overrides Environment=${{ matrix.environment }} \
+            --tags Application=${{ matrix.app }} Environment=${{ matrix.environment }} \
+            --force-upload \
+            --resolve-s3
 
       # Store new hash in SSM Parameter Store
       - name: Store new hash
         if: steps.previous-hash.outputs.prev_hash != steps.sam-hash.outputs.sam_hash
         run: |
           aws ssm put-parameter \
-            --name "/${{ matrix.app }}/deployment-hash" \
+            --name "/${{ matrix.app }}/${{ matrix.environment }}/deployment-hash" \
             --value "${{ steps.sam-hash.outputs.sam_hash }}" \
             --type String \
             --overwrite
@@ -65,3 +82,79 @@ jobs:
         run: |
           pip install -r tests/requirements.txt
           python -m pytest tests/unit/
+
+  build-deploy-live:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: ['github-actions-with-aws-sam', 'new-app']
+        environment: ['live']  
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+      - uses: aws-actions/setup-sam@v1
+      - uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-southeast-1
+
+      # Calculate hash of SAM application files
+      - name: Calculate SAM app hash
+        id: sam-hash
+        working-directory: ./${{ matrix.app }}
+        run: |
+          HASH=$(find . -type f -not -path "./.git/*" -not -path "./.github/*" -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)
+          echo "sam_hash=$HASH" >> $GITHUB_OUTPUT
+
+      # Get previous hash from SSM Parameter Store
+      - name: Get previous hash
+        id: previous-hash
+        continue-on-error: true
+        run: |
+          PREV_HASH=$(aws ssm get-parameter --name "/${{ matrix.app }}/${{ matrix.environment }}/deployment-hash" --query "Parameter.Value" --output text || echo "none")
+          echo "prev_hash=$PREV_HASH" >> $GITHUB_OUTPUT
+
+      # sam build and deploy (only if hash changed)
+      - name: Build and Deploy SAM application
+        if: steps.previous-hash.outputs.prev_hash != steps.sam-hash.outputs.sam_hash && (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_to_live == 'true')
+        working-directory: ./${{ matrix.app }}
+        run: |
+          # Build only if changes detected
+          sam build --use-container
+          
+          # Only deploy if manually triggered
+          if [[ ${{ github.event_name }} == 'workflow_dispatch' && ${{ github.event.inputs.deploy_to_live }} == 'true' ]]; then
+            # Delete stack if stuck in REVIEW_IN_PROGRESS
+            aws cloudformation delete-stack --stack-name ${{ matrix.app }}-${{ matrix.environment }} || true
+            aws cloudformation wait stack-delete-complete --stack-name ${{ matrix.app }}-${{ matrix.environment }} || true
+            
+            sam deploy --no-confirm-changeset --no-fail-on-empty-changeset \
+              --stack-name ${{ matrix.app }}-${{ matrix.environment }} \
+              --capabilities CAPABILITY_IAM \
+              --region ap-southeast-1 \
+              --parameter-overrides Environment=${{ matrix.environment }} \
+              --tags Application=${{ matrix.app }} Environment=${{ matrix.environment }} \
+              --force-upload \
+              --resolve-s3
+          fi
+
+      # Store new hash in SSM Parameter Store
+      - name: Store new hash
+        if: steps.previous-hash.outputs.prev_hash != steps.sam-hash.outputs.sam_hash && (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_to_live == 'true')
+        run: |
+          aws ssm put-parameter \
+            --name "/${{ matrix.app }}/${{ matrix.environment }}/deployment-hash" \
+            --value "${{ steps.sam-hash.outputs.sam_hash }}" \
+            --type String \
+            --overwrite
+
+      # Run Unit tests
+      - name: Run unit tests
+        working-directory: ./${{ matrix.app }}
+        run: |
+          pip install -r tests/requirements.txt
+          python -m pytest tests/unit/
+        
+          
