@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        app: ${{ fromJson(github.workspace) }}
+        app: ['github-actions-with-aws-sam', 'new-app']
         environment: ['staging']  
     if: github.ref == 'refs/heads/development'
     steps:
@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        app: ${{ fromJson(github.workspace) }}
+        app: ['github-actions-with-aws-sam', 'new-app']
         environment: ['live']  
     if: github.ref == 'refs/heads/main'
     steps:
