@@ -3,7 +3,7 @@
 version = 0.1
 
 [default.global.parameters]
-stack_name = "${Environment}-${Application}"
+stack_name = "functionname-environment"
 
 [default.build.parameters]
 cached = true

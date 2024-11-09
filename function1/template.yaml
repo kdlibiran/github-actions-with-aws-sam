@@ -27,5 +27,5 @@ Resources:
 
 Outputs:
   Function:
-    Description: !Sub "${Environment}-${Application} Lambda Function ARN"
+    Description: "Lambda Function ARN"
     Value: !GetAtt Function.Arn
