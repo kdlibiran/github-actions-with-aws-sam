@@ -60,8 +60,9 @@ jobs:
           aws cloudformation delete-stack --stack-name ${{ matrix.app }}-${{ matrix.environment }} || true
           aws cloudformation wait stack-delete-complete --stack-name ${{ matrix.app }}-${{ matrix.environment }} || true
           
-          sam deploy --no-confirm-changeset --no-fail-on-empty-changeset \
+          sam deploy --debug --no-confirm-changeset --no-fail-on-empty-changeset \
             --stack-name ${{ matrix.app }}-${{ matrix.environment }} \
+            --capabilities CAPABILITY_IAM \
             --region ap-southeast-1 \
             --parameter-overrides Environment=${{ matrix.environment }} Application=${{ matrix.app }} \
             --tags Application=${{ matrix.app }} Environment=${{ matrix.environment }} \
