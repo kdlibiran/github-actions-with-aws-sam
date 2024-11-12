@@ -51,21 +51,27 @@ jobs:
           HASH=$(find . -type f -not -path "./.git/*" -not -path "./.github/*" -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)
           echo "sam_hash=$HASH" >> $GITHUB_OUTPUT
 
-      # Get previous hash from SSM Parameter Store
+      # Get previous function hash from Lambda
       - name: Get previous hash
         id: previous-hash
         continue-on-error: true
         run: |
-          PREV_HASH=$(aws ssm get-parameter --name "/${{ matrix.app }}/${{ matrix.environment }}/deployment-hash" --query "Parameter.Value" --output text || echo "none")
+          # Get the function name from SAM template
+          FUNCTION_NAME="${{ matrix.app }}-${{ matrix.environment }}"
+          PREV_HASH=$(aws lambda get-function --function-name $FUNCTION_NAME --query 'Configuration.CodeSha256' --output text || echo "none")
           echo "prev_hash=$PREV_HASH" >> $GITHUB_OUTPUT
 
-      # sam build and deploy (only if hash changed)
+      # sam build and deploy (only if hash changed or function doesn't exist)
       - name: Build and Deploy SAM application
-        if: steps.previous-hash.outputs.prev_hash != steps.sam-hash.outputs.sam_hash
+        if: steps.previous-hash.outputs.prev_hash == 'none' || steps.previous-hash.outputs.prev_hash != steps.sam-hash.outputs.sam_hash
         working-directory: ./${{ matrix.app }}
         run: |
           sam build --use-container
-                    
+          
+          # Create a unique bucket name using the app, environment, and a timestamp
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          BUCKET_NAME="${{ matrix.app }}-${{ matrix.environment }}-${TIMESTAMP}-sam"
+          
           sam deploy --debug --no-confirm-changeset --no-fail-on-empty-changeset \
             --stack-name ${{ matrix.app }}-${{ matrix.environment }} \
             --capabilities CAPABILITY_IAM \
@@ -73,14 +79,8 @@ jobs:
             --parameter-overrides Environment=${{ matrix.environment }} Application=${{ matrix.app }} \
             --tags Application=${{ matrix.app }} Environment=${{ matrix.environment }} \
             --force-upload \
-            --resolve-s3
-
-      # Store new hash in SSM Parameter Store
-      - name: Store new hash
-        if: steps.previous-hash.outputs.prev_hash != steps.sam-hash.outputs.sam_hash
-        run: |
-          aws ssm put-parameter \
-            --name "/${{ matrix.app }}/${{ matrix.environment }}/deployment-hash" \
-            --value "${{ steps.sam-hash.outputs.sam_hash }}" \
-            --type String \
-            --overwrite
+            --resolve-s3 \
+            --s3-bucket $BUCKET_NAME
+          
+          # Delete our specific bucket after deployment
+          aws s3 rb s3://$BUCKET_NAME --force
