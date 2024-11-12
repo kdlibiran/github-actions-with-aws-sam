@@ -93,3 +93,4 @@ jobs:
           
           # Delete the bucket after deployment
           aws s3 rb s3://$BUCKET_NAME --force
+          
