@@ -57,7 +57,7 @@ jobs:
         continue-on-error: true
         run: |
           # Get the function name from SAM template
-          FUNCTION_NAME="${{ matrix.app }}-${{ matrix.environment }}"
+          FUNCTION_NAME="${{ matrix.environment }}-${{ matrix.app }}"
           PREV_HASH=$(aws lambda get-function --function-name $FUNCTION_NAME --query 'Configuration.CodeSha256' --output text || echo "none")
           echo "prev_hash=$PREV_HASH" >> $GITHUB_OUTPUT
 
@@ -70,7 +70,7 @@ jobs:
           
           # Create a unique bucket name using the app, environment, and a timestamp
           TIMESTAMP=$(date +%Y%m%d%H%M%S)
-          BUCKET_NAME="${{ matrix.app }}-${{ matrix.environment }}-${TIMESTAMP}-sam"
+          BUCKET_NAME="${{ matrix.environment }}-${{ matrix.app }}-${TIMESTAMP}-sam"
           
           # Create S3 bucket explicitly
           aws s3api create-bucket \
@@ -82,7 +82,7 @@ jobs:
           sam deploy --debug \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
-            --stack-name ${{ matrix.app }}-${{ matrix.environment }} \
+            --stack-name ${{ matrix.environment }}-${{ matrix.app }} \
             --capabilities CAPABILITY_IAM \
             --region ap-southeast-1 \
             --parameter-overrides Environment=${{ matrix.environment }} Application=${{ matrix.app }} \
