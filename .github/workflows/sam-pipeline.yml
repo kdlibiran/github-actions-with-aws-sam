@@ -61,7 +61,7 @@ jobs:
           PREV_HASH=$(aws lambda get-function --function-name $FUNCTION_NAME --query 'Configuration.CodeSha256' --output text || echo "none")
           echo "prev_hash=$PREV_HASH" >> $GITHUB_OUTPUT
 
-      # sam build and deploy (only if hash changed or function doesn't exist)
+      # sam build and deploy
       - name: Build and Deploy SAM application
         if: steps.previous-hash.outputs.prev_hash == 'none' || steps.previous-hash.outputs.prev_hash != steps.sam-hash.outputs.sam_hash
         working-directory: ./${{ matrix.app }}
@@ -72,15 +72,24 @@ jobs:
           TIMESTAMP=$(date +%Y%m%d%H%M%S)
           BUCKET_NAME="${{ matrix.app }}-${{ matrix.environment }}-${TIMESTAMP}-sam"
           
-          sam deploy --debug --no-confirm-changeset --no-fail-on-empty-changeset \
+          # Create S3 bucket explicitly
+          aws s3api create-bucket \
+            --bucket $BUCKET_NAME \
+            --region ap-southeast-1 \
+            --create-bucket-configuration LocationConstraint=ap-southeast-1
+          
+          # Override samconfig.toml settings
+          sam deploy --debug \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
             --stack-name ${{ matrix.app }}-${{ matrix.environment }} \
             --capabilities CAPABILITY_IAM \
             --region ap-southeast-1 \
             --parameter-overrides Environment=${{ matrix.environment }} Application=${{ matrix.app }} \
             --tags Application=${{ matrix.app }} Environment=${{ matrix.environment }} \
-            --force-upload \
-            --resolve-s3 \
-            --s3-bucket $BUCKET_NAME
+            --s3-bucket $BUCKET_NAME \
+            --config-env custom \
+            --no-resolve-s3
           
-          # Delete our specific bucket after deployment
+          # Delete the bucket after deployment
           aws s3 rb s3://$BUCKET_NAME --force
